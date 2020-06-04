@@ -1,0 +1,74 @@
+from PIL import Image
+import numpy as np
+import pandas as pd
+
+df=pd.read_csv('colours_rgb_shades.csv')
+df.drop(['Color Name','Credits','RGB Hex','CSS Hex','BG/FG color sample'],axis=1,inplace=True)
+df.columns=['RGB']
+df
+
+x=np.array(df.RGB)
+x=x.reshape(x.shape[0],1)
+RGB=[]
+for i in range(0,len(x)):
+    RGB.append(list(x[i])[0].split(';'))
+RGB=np.array(RGB)
+
+R=list(map(int,RGB[:,0]))
+G=list(map(int,RGB[:,1]))
+B=list(map(int,RGB[:,2]))
+
+df['R']=R
+df['G']=G
+df['B']=B
+df['Rdom']=['0']*660
+df['Gdom']=['0']*660
+df['Bdom']=['0']*660
+del df['RGB']
+df
+
+for i in range(0,len(df)):
+    max1=max(df.R[i],df.G[i],df.B[i])
+    df.Rdom[i]=(max1==df.R[i])*1
+    df.Gdom[i]=(max1==df.G[i])*1
+    df.Bdom[i]=(max1==df.B[i])*1
+
+df.R=df.R/255
+df.G=df.G/255
+df.B=df.B/255
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense,Activation
+
+X=df[['R','G','B']].values
+Y=df[['Rdom','Gdom','Bdom']].values
+X=np.asarray(X).astype(np.float32)
+Y=np.asarray(Y).astype(np.float32)
+
+model=Sequential()
+
+model.add(Dense(4,activation='relu'))
+model.add(Dense(3,activation='relu'))
+model.add(Dense(3,activation='sigmoid'))
+
+model.compile(optimizer='rmsprop',loss='categorical_crossentropy',metrics=['accuracy'])
+
+model.fit(x=X,y=Y,epochs=50)
+
+img=Image.open('red.png')
+pix=img.load()
+pix=pix[0,0]
+pix
+
+new_color=[[pix[0]/255,pix[1]/255,pix[2]/255]]
+prediction=model.predict(new_color)
+prediction=list(prediction[0])
+prediction
+
+colors=['Red','Green','Blue']
+print('The dominant colors are - ')
+
+max1=max(prediction)
+for i in range(0,len(colors)):
+    if(prediction[i]==max1):
+        print(colors[i])
